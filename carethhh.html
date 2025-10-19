@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Para careth 💖</title>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#0b0f14; --glow:#ff7fb7; --dim:#ff7fb7aa; --card:#0f1621cc; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Inter,system-ui}
+
+  /* Capas: lluvia encima (z:4), fuegos (z:2), tarjeta (z:3) */
+  #fx{position:fixed;inset:0;z-index:2;pointer-events:none}
+
+  /* Lluvia “Te amo” */
+  .rain{position:fixed;inset:0;overflow:hidden;z-index:4;pointer-events:none}
+  .raindrop{
+    position:absolute; top:-12vh;
+    font-size:14px; color:var(--dim);
+    animation: fall linear infinite;
+    white-space:nowrap; opacity:.65;
+  }
+  .raindrop.bright{ color:var(--glow); opacity:.9; filter:drop-shadow(0 0 6px #ff7fb777); }
+  @keyframes fall{
+    from{ transform:translateY(-12vh) translateX(var(--dx,0px)); }
+    to  { transform:translateY(112vh) translateX(var(--dx,0px)); }
+  }
+
+  /* Tarjeta */
+  .wrap{position:relative;z-index:3;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:8vmin}
+  .card{
+    background:var(--card); backdrop-filter:blur(6px);
+    border:1px solid #ffffff1a; border-radius:22px;
+    max-width:760px; width:100%; padding:28px 26px; text-align:center;
+    box-shadow:0 18px 50px #0007,inset 0 0 0 1px #fff1;
+  }
+  h1{font-family:"Great Vibes",cursive; font-size:clamp(40px,7vw,86px); color:#ffd0e5; margin:0 0 6px}
+  .msg{font-size:clamp(16px,2.6vw,22px); line-height:1.6; white-space:pre-wrap; min-height:4.2em; margin:8px 0 16px}
+  .row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+  button{background:#0000; border:1px solid #ffffff3a; color:#fff; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer}
+  .tiny{font-size:12px; opacity:.85}
+  #config{display:none}
+</style>
+</head>
+<body>
+  <!-- Fuegos -->
+  <canvas id="fx"></canvas>
+  <!-- Lluvia -->
+  <div class="rain" id="rain" aria-hidden="true"></div>
+
+  <div class="wrap">
+    <div class="card">
+      <h1 id="title">Para … 💖</h1>
+      <div id="typed" class="msg"></div>
+      <div class="row">
+        <button id="start" class="tiny">Empezar</button>
+      </div>
+      <audio id="audio" preload="auto" loop></audio>
+    </div>
+  </div>
+
+  <!-- Config editable -->
+  <div id="config"
+       data-name="careth"
+       data-audio="careth.mp3"
+       data-rain="Te amo">
+Hola careth,
+ estaba un pelin aburrido y la vdd no dejo de pensarte,
+ se me ocurrió hacer algo acá bien ingenioso ya q no te puedo ver :(,
+  y solo keria decirte q me gustaaisss mucho y te extraño demasiado,
+ te amo mi cuchurrumin dvdd dvdd jeje y ya.
+  </div>
+
+<script>
+/* Utilidades */
+const cfg = document.getElementById('config');
+const NOMBRE = (cfg.dataset.name||'Mi amor').trim();
+const AUDIO_SRC = (cfg.dataset.audio||'musica.mp3').trim();
+const TEXTO_LLUVIA = (cfg.dataset.rain||'Te amo').trim();
+const RAW_MSG = (cfg.textContent||'').trim();
+const title = document.getElementById('title');
+const typed = document.getElementById('typed');
+const audioEl = document.getElementById('audio');
+
+title.textContent = `Para ${NOMBRE} 💖`;
+audioEl.src = AUDIO_SRC;
+
+/* ---- Lluvia visible ---- */
+const rain = document.getElementById('rain');
+(function makeRain(){
+  const density = Math.min(200, Math.floor(innerWidth/6)); // más denso
+  for(let i=0;i<density;i++){
+    const s = document.createElement('span');
+    s.className = 'raindrop' + (Math.random()>0.85 ? ' bright' : '');
+    s.textContent = TEXTO_LLUVIA;
+    resetDrop(s,true);
+    rain.appendChild(s);
+  }
+  function resetDrop(el, first=false){
+    const xvw = Math.random()*100;
+    const dur = 7 + Math.random()*10;  // más lento para que se note
+    const delay = first ? Math.random()*10 : 0;
+    const scale = 0.9 + Math.random()*1.6;
+    const drift = (Math.random()*2-1) * 30; // deriva lateral sutil
+    el.style.left = xvw+'vw';
+    el.style.animationDuration = dur+'s';
+    el.style.animationDelay = delay+'s';
+    el.style.setProperty('--dx', drift+'px');
+    el.style.transform = `translateY(-12vh) scale(${scale})`;
+    el.onanimationend = ()=> resetDrop(el);
+  }
+})();
+
+/* ---- Escrito por LÍNEAS ----
+   1) Si el texto trae \n, se respetan.
+   2) Si no, se divide por oraciones/comas. */
+function splitLines(txt){
+  const byNewline = txt.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+  if(byNewline.length>1) return byNewline;
+  // Partir por oraciones y comas
+  const parts = txt.split(/(?<=[.!?…])\s+|,\s+/).map(s=>s.trim()).filter(Boolean);
+  return parts.length? parts : [txt];
+}
+const LINES = splitLines(RAW_MSG);
+
+async function typeLineByLine(lines, el, charSpeed=40, linePause=1200){
+  el.textContent = '';
+  for(const line of lines){
+    for(let i=0;i<line.length;i++){
+      el.textContent += line[i];
+      await new Promise(r=>setTimeout(r,charSpeed));
+    }
+    el.textContent += '\n';               // salto de línea
+    await new Promise(r=>setTimeout(r,linePause));
+  }
+}
+typeLineByLine(LINES, typed);
+
+/* ---- Música en primer click o botón ---- */
+let audioStarted = false;
+function startAudio(){
+  if(!audioStarted){
+    audioStarted = true;
+    audioEl.volume = 0.7;
+    audioEl.play().catch(()=>{ /* móviles piden interacción */ });
+  }
+}
+document.body.addEventListener('click', startAudio, {once:true});
+document.getElementById('start').addEventListener('click', (e)=>{ e.stopPropagation(); startAudio(); });
+
+/* ---- Fuegos al click/touch ---- */
+const canvas = document.getElementById('fx');
+const ctx = canvas.getContext('2d');
+let W,H,particles=[];
+function resize(){ W=canvas.width=innerWidth; H=canvas.height=innerHeight } resize();
+addEventListener('resize', resize, {passive:true});
+
+function burst(x,y){
+  const count = 70 + Math.random()*50;
+  for(let i=0;i<count;i++){
+    const ang = (Math.PI*2)*(i/count) + Math.random()*0.2;
+    const spd = 2 + Math.random()*4;
+    particles.push({x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,life:60+Math.random()*30,size:1+Math.random()*2});
+  }
+}
+(function draw(){
+  ctx.fillStyle='rgba(11,15,20,0.25)'; ctx.fillRect(0,0,W,H);
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.life--; p.x+=p.vx; p.y+=p.vy; p.vy+=0.03;
+    ctx.beginPath();
+    const hue = 330 + Math.sin((p.life+i)*0.05)*15; // rosas
+    ctx.fillStyle = `hsla(${hue},90%,70%,${Math.max(0,p.life/80)})`;
+    ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    if(p.life<=0) particles.splice(i,1);
+  }
+  requestAnimationFrame(draw);
+})();
+
+function pointer(e){
+  const t = e.touches ? e.touches[0] : e;
+  burst(t.clientX, t.clientY);
+}
+addEventListener('click', pointer);
+addEventListener('touchstart', pointer, {passive:true});
+</script>
+</body>
+</html>
